@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wikipediaタガー - テキストをWikipediaで自動注釈</title>
+  <meta name="description" content="入力テキスト中のWikipedia記事タイトルを自動検出し、[]でくくって注釈表示する読書・学習支援Webアプリケーション。内部組み込みダンプデータにより超高速処理。">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-theme="light">
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-left">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"></path>
+            <path d="M6 6h10"></path>
+            <path d="M6 10h10"></path>
+            <path d="M6 14h6"></path>
+          </svg>
+        </div>
+        <div class="header-title-group">
+          <div class="title-row">
+            <h1 class="app-title">Wikipediaタガー</h1>
+            <span class="badge badge-primary badge-loading" id="dbStatusBadge">
+              <span class="status-dot"></span>
+              <span id="dbStatusText">辞書データを読込中...</span>
+            </span>
+            <span class="badge badge-outline">静的サイト / オフライン完結</span>
+          </div>
+          <p class="app-subtitle">テキスト中の専門用語をWikipedia記事タイトルで自動注釈し、読書や調査を支援します</p>
+        </div>
+      </div>
+      <div class="header-right">
+        <button id="themeToggleBtn" class="icon-button" title="テーマ切り替え (ライト/ダーク)" aria-label="テーマ切り替え">
+          <svg class="sun-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+          <svg class="moon-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
+        <a href="#aboutSection" class="btn btn-ghost" id="aboutNavBtn">概要・ヘルプ</a>
+      </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="main-content">
+      <!-- Dictionary Load Progress Bar -->
+      <div class="load-progress-container" id="loadProgressContainer">
+        <div class="load-progress-info">
+          <span class="load-spinner-mini"></span>
+          <span id="loadStatusText">Wikipedia辞書データを準備中...</span>
+        </div>
+        <div class="load-progress-track">
+          <div class="load-progress-bar" id="loadProgressBar"></div>
+        </div>
+      </div>
+
+      <!-- Top Instructions & Feature Summary -->
+      <section class="info-banner">
+        <div class="info-content">
+          <div class="info-icon">💡</div>
+          <div class="info-text">
+            <strong>使い方:</strong> テキストを入力して「<strong>実行</strong>」をクリックすると、テキスト中のWikipedia記事タイトルを <code class="tag-example">[用語]</code> でくくって表示します。
+            用語をクリックすると別ウィンドウ（ポップアップ）でWikipedia記事が開きます。専門用語の多い文章を読む際にご活用ください。
+          </div>
+        </div>
+      </section>
+
+      <!-- Sample Quick Selectors -->
+      <section class="sample-bar">
+        <span class="sample-label">サンプル読込:</span>
+        <div class="sample-buttons" id="sampleButtonsContainer">
+          <button class="sample-chip" data-sample="quantum_ai">⚛️ 量子情報・AI</button>
+          <button class="sample-chip" data-sample="history">📜 日本古代史・考古学</button>
+          <button class="sample-chip" data-sample="genetics">🧬 ゲノム医療・分子生物学</button>
+          <button class="sample-chip" data-sample="astrophysics">🌌 宇宙物理学・ブラックホール</button>
+        </div>
+      </section>
+
+      <!-- Dual Pane Editor & Viewer -->
+      <div class="workspace-grid">
+        <!-- Input Panel -->
+        <section class="card editor-panel">
+          <div class="panel-header">
+            <div class="panel-title-group">
+              <h2 class="panel-title">入力テキスト</h2>
+              <span class="char-count" id="inputCharCount">0 / 2,000 文字</span>
+            </div>
+            <div class="panel-actions">
+              <button id="clearInputBtn" class="btn btn-sm btn-ghost" title="入力をクリア">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18m-2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                クリア
+              </button>
+            </div>
+          </div>
+
+          <div class="textarea-wrapper">
+            <textarea
+              id="inputText"
+              class="main-textarea"
+              maxlength="2000"
+              placeholder="ここに注釈をつけたい文章を入力またはペーストしてください（最大2,000文字）...&#10;&#10;例:「量子コンピュータは、量子力学の原理を利用して計算を行う次世代の計算機であり、人工知能や暗号解読の研究で注目されている。」"
+              rows="12"
+            ></textarea>
+          </div>
+
+          <!-- Options Drawer -->
+          <div class="options-wrapper">
+            <details class="options-details" id="optionsDetails">
+              <summary class="options-summary">
+                <span class="options-summary-title">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                  抽出・タギング設定
+                </span>
+                <span class="options-hint">基本語彙フィルター、最小文字数など</span>
+              </summary>
+              <div class="options-body">
+                <div class="option-row">
+                  <label class="toggle-control">
+                    <input type="checkbox" id="optFilterStopwords" checked>
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">基本語彙の除外 (Wiktionary基本語・機能語をフィルタリング)</span>
+                  </label>
+                </div>
+                <div class="option-row">
+                  <label class="toggle-control">
+                    <input type="checkbox" id="optFilterHiragana" checked>
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">短いひらがな語の除外 (3文字以下の純ひらがなを非対象)</span>
+                  </label>
+                </div>
+                <div class="option-row select-row">
+                  <label for="optMinWordLen" class="select-label">最小単語長:</label>
+                  <select id="optMinWordLen" class="form-select">
+                    <option value="2" selected>2文字以上 (標準)</option>
+                    <option value="3">3文字以上 (より専門的な複合語に絞り込み)</option>
+                    <option value="4">4文字以上</option>
+                  </select>
+                </div>
+                <div class="option-row select-row">
+                  <label for="optOpenTarget" class="select-label">記事の開き方:</label>
+                  <select id="optOpenTarget" class="form-select">
+                    <option value="popup" selected>別ウィンドウ (ポップアップ小窓 880×720)</option>
+                    <option value="tab">新しいブラウザタブ</option>
+                  </select>
+                </div>
+              </div>
+            </details>
+          </div>
+
+          <div class="panel-footer">
+            <div class="footer-hint">ショートカット: <kbd>Ctrl</kbd> + <kbd>Enter</kbd></div>
+            <div class="footer-buttons">
+              <button id="executeBtn" class="btn btn-primary btn-lg">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                実行する
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Result Panel -->
+        <section class="card viewer-panel">
+          <div class="panel-header">
+            <div class="panel-title-group">
+              <h2 class="panel-title">注釈結果</h2>
+              <div class="stats-pills" id="statsPills" style="display: none;">
+                <span class="stat-pill" title="検出された総タグ数">🏷️ <strong id="statTotalTags">0</strong> 箇所</span>
+                <span class="stat-pill" title="固有記事数">📚 <strong id="statUniqueTerms">0</strong> 語</span>
+                <span class="stat-pill" title="処理時間">⚡ <strong id="statElapsed">0.0</strong> ms</span>
+              </div>
+            </div>
+            <div class="panel-actions">
+              <button id="copyTextBtn" class="btn btn-sm btn-outline" title="[用語]付きのテキストをコピー" disabled>
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                テキストコピー
+              </button>
+              <button id="exportHtmlBtn" class="btn btn-sm btn-outline" title="注釈付きHTMLファイルとして保存" disabled>
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                HTML保存
+              </button>
+            </div>
+          </div>
+
+          <!-- Output Viewport -->
+          <div class="output-viewport" id="outputViewport">
+            <div class="empty-state" id="emptyState">
+              <div class="empty-icon">
+                <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                  <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+              </div>
+              <h3>注釈結果がここに表示されます</h3>
+              <p>左側のテキストエリアに文章を入力し、「実行する」ボタンをクリックしてください。<br>サンプルボタンからすぐに試すこともできます。</p>
+            </div>
+
+            <div class="loading-state" id="loadingState" style="display: none;">
+              <div class="spinner"></div>
+              <p>Wikipediaダンプデータを照合中...</p>
+            </div>
+
+            <div class="result-content" id="resultContent" style="display: none;"></div>
+          </div>
+
+          <!-- Bottom Detected Terms Index -->
+          <div class="terms-drawer" id="termsDrawer" style="display: none;">
+            <div class="terms-drawer-header">
+              <div class="terms-title">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                <span>検出された用語一覧 (<span id="detectedTermsCount">0</span> 語)</span>
+              </div>
+              <div class="terms-filter">
+                <input type="text" id="termSearchInput" class="term-search" placeholder="用語を絞り込み...">
+              </div>
+            </div>
+            <div class="terms-chips-container" id="termsChipsContainer"></div>
+          </div>
+        </section>
+      </div>
+
+      <!-- About & Specification Section (Reference homage) -->
+      <section class="card about-card" id="aboutSection">
+        <h2 class="about-heading">Wikipediaタガーについて</h2>
+        <div class="about-grid">
+          <div class="about-col">
+            <h3>特徴と仕様</h3>
+            <ul class="about-list">
+              <li><strong>完全クライアントサイド静的動作</strong>: バックエンドサーバー不要。ブラウザ標準のストリーミングGZIP解凍（<code>DecompressionStream</code>）と Web Worker により、クライアント側で約208万語の辞書を高速展開・照合。</li>
+              <li><strong>最長一致（Greedy Longest Match）</strong>: 複合語や長い専門用語（例:「量子コンピュータ」「人工知能」）を優先してマッチングします。</li>
+              <li><strong>ポップアップ閲覧</strong>: 注釈用語をクリックすると、指定サイズの別ウィンドウでWikipedia該当記事が即座に開きます。</li>
+              <li><strong>オフライン完結 &amp; 高速キャッシュ</strong>: 初回ロード後はブラウザの Cache API に保持されるため、外部Web APIの通信制限や遅延がなく、完全オフラインかつミリ秒単位で処理可能です。</li>
+              <li><strong>入力文字数制限 &amp; セキュリティ保護</strong>: 大量データ投入防止のため1回あたり最大2,000文字に制限。またJavaScriptインジェクション対策として、危険文字・制御文字（<code>'</code>, <code>"</code>, <code>\</code>, <code>\n</code>, <code>\r</code>, <code>\t</code>, <code>&amp;</code>, <code>&lt;</code>, <code>&gt;</code>）を入出力時に完全エスケープします。</li>
+            </ul>
+          </div>
+          <div class="about-col">
+            <h3>除外規則と留意事項</h3>
+            <p class="about-text">
+              すべての単語がハイライトされるわけではありません。文脈の可読性を保つため、以下のルールを適用しています：
+            </p>
+            <ol class="about-list">
+              <li>空白・アンダースコア（<code>_</code>）を含む記事タイトル</li>
+              <li>ひらがな1文字および極めて短い日常語</li>
+              <li>日本語の基本語彙（Wiktionary基本語彙・助詞・助動詞等）</li>
+              <li>曖昧さ回避括弧 <code>()</code> を含むタイトル</li>
+            </ol>
+            <div class="reference-box">
+              <p class="reference-title">本アプリケーションについて:</p>
+              <p class="reference-desc">
+                本ツールは、東京大学の「<a href="https://mbc.dl.itc.u-tokyo.ac.jp/wikipedia_tagger/" target="_blank" rel="noopener noreferrer">Wikipediaタガー（Akira Maeda氏 開発）</a>」のコンセプトと設計思想を参考に、内部組み込みダンプによる超高速アーキテクチャと現代的なWeb UI/UXで再構築したものです。
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <div class="footer-content">
+        <span>Wikipedia Tagger - Accelerated with Internal Dump Engine</span>
+        <span class="footer-links">
+          <a href="https://ja.wikipedia.org/wiki/Wikipedia:%E3%83%87%E3%83%BC%E3%82%BF%E3%83%99%E3%83%BC%E3%82%B9%E3%83%80%E3%82%A6%E3%83%B3%E3%83%AD%E3%83%BC%E3%83%89" target="_blank" rel="noopener noreferrer">Wikipedia データベースダウンロード</a>
+          •
+          <a href="https://ja.wiktionary.org/wiki/Wiktionary:%E6%97%A5%E6%9C%AC%E8%AA%9E%E3%81%AE%E5%9F%BA%E6%9C%AC%E8%AA%9E%E5%BD%991000" target="_blank" rel="noopener noreferrer">日本語の基本語彙1000</a>
+        </span>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Toast notification for copy/export -->
+  <div id="toastNotification" class="toast-notification"></div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

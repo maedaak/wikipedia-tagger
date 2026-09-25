@@ -1,0 +1,21 @@
+{
+  "name": "wikipedia-tagger",
+  "version": "1.0.0",
+  "description": "Wikipedia Tagger - Automated annotation of Japanese texts using embedded Wikipedia article dump dataset",
+  "main": "index.html",
+  "scripts": {
+    "start": "python -m http.server 8080",
+    "serve": "npx -y serve . -l 8080",
+    "dev": "python -m http.server 8080",
+    "prepare-data": "python scripts/prepare_data.py"
+  },
+  "keywords": [
+    "wikipedia",
+    "nlp",
+    "tagger",
+    "annotation",
+    "japanese"
+  ],
+  "author": "Akira Maeda",
+  "license": "MIT"
+}

@@ -1,0 +1,38 @@
+# Wikipedia raw dump files (raw source dump, not needed for web app)
+jawiki-latest-all-titles-in-ns0.gz
+jawiki-*-all-titles-in-ns0.gz
+
+# Explicitly ensure the required frontend dictionary file is NOT ignored:
+!data/wikipedia_titles.txt.gz
+
+# Database / SQLite files (not used in web app, exclude large generated files)
+*.db
+*.sqlite
+*.sqlite3
+data/*.db
+
+# Python caches and environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# Node dependencies & logs
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS generated files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# IDE / Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
